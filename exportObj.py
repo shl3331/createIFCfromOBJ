@@ -1,5 +1,28 @@
 
+import bpy
 import os
+
+
+def convertToObj(file, saveFile):
+    '''
+    other file (dae, gltf, glb,fbx) convert to obj
+    :param file: before file (ex:*.dae, *.fbx)
+    :param saveFile: save file name(new file name)
+    :return:
+    '''
+    bpy.ops.object.delete()
+    type = file.split('.')[len(file.split('.'))-1]
+    file_loc = file
+    if type == 'fbx':
+        object =bpy.ops.import_scene.fbx(filepath=file_loc)
+    elif type == 'gltf' or type == 'glb':
+        object =bpy.ops.import_scene.gltf(filepath=file_loc)
+    elif type == 'dae':
+        object =bpy.ops.wm.collada_import(filepath=file_loc)
+    bpy.ops.export_scene.obj(filepath=saveFile)
+    obj=bpy.ops.import_scene.obj(filepath=saveFile)
+    bpyObj = bpy.context.selected_objects[0]
+    bpyObjName = bpy.data.objects[1].name
 
 def getVertex(readFile):
     '''

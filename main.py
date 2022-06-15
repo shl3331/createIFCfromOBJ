@@ -1,6 +1,17 @@
 import exportObj
 import createIFC
+
+glb = ".\model\curve_45.glb"
+dae = ".\model\curve_45.dae"
+fbx = ".\model\curve_45.fbx"
+gltf = ".\model\curve_45.gltf"
+saveFile = ".\model\curve_45d.obj"
+fbx_hole = ".\model\hole.fbx"
+saveFile_hole = ".\model\hole_0504.obj"
+saveFile_hole_ifc = ".\model\hole_0504.ifc"
+sampleobjfile=".\model\pipe-45d.obj"
 saveFile= ".\model\curve_45d.obj"
+saveFile_= ".\model\curve_45d_.obj"
 
 def print_hi(name):
     # 스크립트를 디버그하려면 하단 코드 줄의 중단점을 사용합니다.
@@ -10,6 +21,7 @@ def print_hi(name):
 # 스크립트를 실행하려면 여백의 녹색 버튼을 누릅니다.
 if __name__ == '__main__':
     print_hi('PyCharm')
+    exportObj.convertToObj(fbx, saveFile_)
     vertexList = exportObj.getVertex(saveFile)
     vtList = exportObj.getVertexTexture(saveFile)
     faceList, vtMapList = exportObj.getFace(saveFile)
