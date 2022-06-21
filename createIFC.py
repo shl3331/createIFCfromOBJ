@@ -9,13 +9,9 @@ X = 1., 0., 0.
 Y = 0., 1., 0.
 Z = 0., 0., 1.
 
-def getTempIfcfile():
-    # Write the template to a temporary file
-    temp_handle, temp_filename = tempfile.mkstemp(suffix=".ifc")
-    with open(temp_filename, "wb") as f:
-        f.write(template.encode())
-    return ifcopenshell.open(temp_filename)
-
+global creator
+global organization
+newFile="20220608.ifc"
 def create_ifcaxis2placement(ifcfile, point=O, dir1=Z, dir2=X):
     '''
     Creates an IfcAxis2Placement3D from Location, Axis and RefDirection specified as Python tuples
@@ -83,8 +79,15 @@ def create_ifcTextureVertex(ifcfile,vt_list):
         point=ifcfile.createIfcTextureVertex(point)
         pointLst.append(point)
 
+# Creates an IfcExtrudedAreaSolid from a list of points, specified as Python tuples
+def create_ifcextrudedareasolid(ifcfile, point_list, ifcaxis2placement, extrude_dir, extrusion):
+    polyline = create_ifcpolyline(ifcfile, point_list)
+    ifcclosedprofile = ifcfile.createIfcArbitraryClosedProfileDef("AREA", None, polyline)
+    ifcdir = ifcfile.createIfcDirection(extrude_dir)
+    ifcextrudedareasolid = ifcfile.createIfcExtrudedAreaSolid(ifcclosedprofile, ifcaxis2placement, ifcdir, extrusion)
+    return ifcextrudedareasolid
 
-def create_ifcFacetedBrep(ifcfile, point_list,face_list):
+def create_ifcFacetedBrep(ifcfile, point_list,face_list,vtList,vtMapList):
     '''
     create ifcfile face from objfile object vertex list
     :param ifcfile: ifcfile
@@ -94,14 +97,19 @@ def create_ifcFacetedBrep(ifcfile, point_list,face_list):
     '''
     facelist=[]
     ifcptslst = []
-    ifcpointlist=[]
+    ifcpointlst=[]
+    ifctexturevertexlst=[]
     for point in point_list:
         point=ifcfile.createIfcCartesianPoint(point)
-        ifcpointlist.append(point)
+        ifcpointlst.append(point)
+    for vt in vtList:
+        ifctexturevertexlst.append(ifcfile.createIfcTextureVertex(vt))
+    for vtMap in vtMapList:
+        ifcfile.createIfctexturemap([ifctexturevertexlst[int(vtMap[0])-1],ifctexturevertexlst[int(vtMap[1])-1],ifctexturevertexlst[int(vtMap[2])-1]])
     for facelst in face_list:
         ifcpts = []
         for face in facelst:
-            ifcpts.append(ifcpointlist[int(face)-1])
+            ifcpts.append(ifcpointlst[int(face)-1])
         ifcptslst.append(ifcpts)
     for pts in ifcptslst:
         polyloop=ifcfile.createIfcPolyLoop(pts)
@@ -122,13 +130,67 @@ def moveElementProxy(ifcBuildingElementProxy,locationList):
     ifcBuildingElementProxy.ObjectPlacement.RelativePlacement.Location.Coordinates = (locationList[0], locationList[1], locationList[2])
     return ifcBuildingElementProxy
 
-def addObjecttoIfcFile(ifcfile,newFile,infoDic,vertextlst,face_list,mtlList,groupName):
+create_guid = lambda: ifcopenshell.guid.compress(uuid.uuid1().hex)
+timestamp = time.time()
+timestring = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(timestamp))
+application, application_version = "IfcOpenShell", "0.6"
+project_globalid, project_name = create_guid(), "Hello Wall"
+
+# A template IFC file to quickly populate entity instances for an IfcProject with its dependencies
+template = """ISO-10303-21;
+HEADER;
+FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
+FILE_NAME('""" + newFile + """','2020-11-20T12:19:44+09:00',(),(),'IfcOpenShell 0.6.0b0','BlenderBIM 0.0.200621','Moult');
+FILE_SCHEMA(('IFC4'));
+ENDSEC;
+DATA;
+#1=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
+#2=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);
+#3=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);
+#4=IFCUNITASSIGNMENT((#1,#2,#3));
+#5=IFCACTORROLE(.ARCHITECT.,$,'Draws the pretty pictures');
+#6=IFCPOSTALADDRESS(.OFFICE.,'Headquarters',$,'Cupboard under the stairs',('221B Baker Street'),$,'MyTown','Middle-Earth','42','Narnia');
+#7=IFCTELECOMADDRESS(.OFFICE.,'Headquarters',$,('0123456789'),$,$,('dion@thinkmoult.com'),'https://thinkmoult.com',('irc://irc.freenode.net##architect'));
+#8=IFCPERSON('Moult','Moult','Dion',('Sebastian','Isan','Tan'),('Mr'),('UE'),(#5),(#6,#7));
+#9=IFCACTORROLE(.USERDEFINED.,'CONTRIBUTOR',$);
+#10=IFCTELECOMADDRESS(.USERDEFINED.,'The main webpage of the software collection.','WEBPAGE',$,$,$,$,'https://ifcopenshell.org',$);
+#11=IFCTELECOMADDRESS(.USERDEFINED.,'The BlenderBIM webpage of the software collection.','WEBPAGE',$,$,$,$,'https://blenderbim.org',$);
+#12=IFCTELECOMADDRESS(.USERDEFINED.,'The source code repository of the software collection.','REPOSITORY',$,$,$,$,'https://github.com/IfcOpenShell/IfcOpenShell.git',$);
+#13=IFCORGANIZATION($,'IfcOpenShell','IfcOpenShell is an open source (LGPL) software library that helps users and software developers to work with the IFC file format.',(#9),(#10,#11,#12));
+#14=IFCCARTESIANPOINT((0.,0.,0.));
+#15=IFCDIRECTION((0.,0.,1.));
+#16=IFCDIRECTION((1.,0.,0.));
+#17=IFCAXIS2PLACEMENT3D(#14,#15,#16);
+#18=IFCPERSONANDORGANIZATION(#8,#13,$);
+#19=IFCAPPLICATION(#13,'0.0.200621','BlenderBIM','BlenderBIM');
+#20=IFCOWNERHISTORY(#18,#19,.READWRITE.,.NOCHANGE.,1605842384,#18,#19,1605842384);
+#21=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#17,$);
+#22=IFCGEOMETRICREPRESENTATIONSUBCONTEXT('Body','Model',*,*,*,*,#21,$,.MODEL_VIEW.,$);
+#23=IFCPROJECT('1nr0ixnS13wfYAfjpLBIT8',$,'My Project',$,$,$,$,(#21),#4);
+#24=IFCOBJECTIVE('Beauty','The built form should be beautiful',.HARD.,$,$,$,$,$,$,.DESIGNINTENT.,$);
+#25=IFCOBJECTIVE('Safety','No facilities exist to generate killer artificial intelligence',.HARD.,$,$,$,$,$,$,.HEALTHANDSAFETY.,$);
+#26=IFCSHAPEREPRESENTATION(#22,'Body','Brep',());
+#27=IFCREPRESENTATIONMAP(#17,#26);
+ENDSEC;
+END-ISO-10303-21;
+""" % locals()
+
+# Write the template to a temporary file
+temp_handle, temp_filename = tempfile.mkstemp(suffix=".ifc")
+with open(temp_filename, "wb") as f:
+    f.write(template.encode())
+
+# Obtain references to instances defined in template
+ifcfile = ifcopenshell.open(temp_filename)
+
+def addObjecttoIfcFile(newFile,infoDic,vertextlst,face_list,mtlList,groupName,vtList,vtMapList):
     owner_history = ifcfile.by_type("IfcOwnerHistory")[0]
     project = ifcfile.by_type("IfcProject")[0]
     context = ifcfile.by_type("IfcGeometricRepresentationContext")[0]
-    # subcontext = ifcfile.by_type("IfcGeometricRepresentationSubContext")[0]
+    subcontext = ifcfile.by_type("IfcGeometricRepresentationSubContext")[0]
     axis2placement = ifcfile.by_type("IfcAxis2Placement3D")[0]
-    shape = create_ifcFacetedBrep(ifcfile, vertextlst, face_list)
+    representationMap = ifcfile.by_type("IfcRepresentationMap")[0]
+    shape = create_ifcFacetedBrep(ifcfile, vertextlst, face_list,vtList,vtMapList)
     shapeRepresentation = ifcfile.createIfcShapeRepresentation(context, "Body", "Brep", [shape])
     createdMap = ifcfile.createIfcRepresentationMap(axis2placement, shapeRepresentation)
     materialLst = []
@@ -151,22 +213,20 @@ def addObjecttoIfcFile(ifcfile,newFile,infoDic,vertextlst,face_list,mtlList,grou
                                  "ELEMENT",
                                  None, None, None, None, None)
     building_placement = create_ifclocalplacement(ifcfile, relative_to=site_placement)
-    building = ifcfile.createIfcBuilding(create_guid(), owner_history, 'Building', None, None, building_placement,
-                                         None,
+    building = ifcfile.createIfcBuilding(create_guid(), owner_history, 'Building', None, None, building_placement, None,
                                          None, "ELEMENT", None, None, None)
     storey_placement = create_ifclocalplacement(ifcfile, relative_to=building_placement)
     elevation = 0.0
     building_storey = ifcfile.createIfcBuildingStorey(create_guid(), owner_history, 'Storey', None, None,
                                                       storey_placement,
                                                       None, None, "ELEMENT", elevation)
-    # container_storey = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Building Container", None,
-    #                                                   building,
-    #                                                   [building_storey])
-    # container_site = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Site Container", None, site,
-    #                                                 [building])
-    # container_project = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Project Container", None,
-    #                                                    project,
-    #                                                    [site])
+    container_storey = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Building Container", None,
+                                                      building,
+                                                      [building_storey])
+    container_site = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Site Container", None, site,
+                                                    [building])
+    container_project = ifcfile.createIfcRelAggregates(create_guid(), owner_history, "Project Container", None, project,
+                                                       [site])
 
     pt = ifcfile.createIfcCartesianPoint((0., 0., 0.))
     dir1 = ifcfile.createIfcDirection((0., 0., 1.0))
@@ -180,19 +240,17 @@ def addObjecttoIfcFile(ifcfile,newFile,infoDic,vertextlst,face_list,mtlList,grou
     dir5 = ifcfile.createIfcDirection(Z)
     cartesiantranspormationperator3D = ifcfile.createIfcCartesianTransformationOperator3D(dir3, dir4, pt2, 1., dir5)
     mappedItem = ifcfile.createIfcMappedItem(createdMap, cartesiantranspormationperator3D)
-    shaperepresantation = ifcfile.createIfcShapeRepresentation(context, 'Body', 'MappedRepresentation',
+    shaperepresantation2 = ifcfile.createIfcShapeRepresentation(subcontext, 'Body', 'MappedRepresentation',
                                                                 [mappedItem])
-    ProductDefinitionShape = ifcfile.createIfcProductDefinitionShape(None, None, [shaperepresantation])
+    ProductDefinitionShape = ifcfile.createIfcProductDefinitionShape(None, None, [shaperepresantation2])
     buildingElementProxy = ifcfile.createIfcBuildingElementProxy(ifcopenshell.guid.compress(uuid.uuid1().hex),
                                                                  owner_history, groupName, None, None,
                                                                  local, ProductDefinitionShape, None, None)
-    buildingElementProxy = moveElementProxy(buildingElementProxy, [0.0,0.0,0.0])
-    ifcfile.createIfcRelContainedInspatialStructure(ifcopenshell.guid.compress(uuid.uuid1().hex), owner_history,
-                                                    None,
+    # buildingElementProxy = moveElementProxy(buildingElementProxy, resultDic.get("XyzList")[i])
+    ifcfile.createIfcRelContainedInspatialStructure(ifcopenshell.guid.compress(uuid.uuid1().hex), owner_history, None,
                                                     None, [buildingElementProxy], building_storey)
     for m in materialLst:
-        ifcfile.createIfcRelassociatesMaterial(ifcopenshell.guid.compress(uuid.uuid1().hex), owner_history, None,
-                                               None,
+        ifcfile.createIfcRelassociatesMaterial(ifcopenshell.guid.compress(uuid.uuid1().hex), owner_history, None, None,
                                                [buildingElementProxy], m)
     property_values = []
     for key, value in infoDic.items():
@@ -206,56 +264,14 @@ def addObjecttoIfcFile(ifcfile,newFile,infoDic,vertextlst,face_list,mtlList,grou
     return ifcfile
 
 
-create_guid = lambda: ifcopenshell.guid.compress(uuid.uuid1().hex)
-
-filename = ""
-timestamp = time.time()
-timestring = time.strftime("%Y-%m-%dT%H:%M:%S", time.gmtime(timestamp))
-creator = "Movements"
-organization = "Movements"
-objectTpye="Wall"
-application, application_version = "IfcOpenShell", "0.5"
-project_globalid, project_name = create_guid(), objectTpye
-
-template = """ISO-10303-21;
-HEADER;
-FILE_DESCRIPTION(('ViewDefinition [CoordinationView]'),'2;1');
-FILE_NAME('%(filename)s','%(timestring)s',('%(creator)s'),('%(organization)s'),'%(application)s','%(application)s','');
-FILE_SCHEMA(('IFC2X3'));
-ENDSEC;
-DATA;
-#1=IFCPERSON($,$,'%(creator)s',$,$,$,$,$);
-#2=IFCORGANIZATION($,'%(organization)s',$,$,$);
-#3=IFCPERSONANDORGANIZATION(#1,#2,$);
-#4=IFCAPPLICATION(#2,'%(application_version)s','%(application)s','');
-#5=IFCOWNERHISTORY(#3,#4,$,.ADDED.,$,#3,#4,%(timestamp)s);
-#6=IFCDIRECTION((1.,0.,0.));
-#7=IFCDIRECTION((0.,0.,1.));
-#8=IFCCARTESIANPOINT((0.,0.,0.));
-#9=IFCAXIS2PLACEMENT3D(#8,#7,#6);
-#10=IFCDIRECTION((0.,1.,0.));
-#11=IFCGEOMETRICREPRESENTATIONCONTEXT($,'Model',3,1.E-05,#9,#10);
-#12=IFCDIMENSIONALEXPONENTS(0,0,0,0,0,0,0);
-#13=IFCSIUNIT(*,.LENGTHUNIT.,$,.METRE.);
-#14=IFCSIUNIT(*,.AREAUNIT.,$,.SQUARE_METRE.);
-#15=IFCSIUNIT(*,.VOLUMEUNIT.,$,.CUBIC_METRE.);
-#16=IFCSIUNIT(*,.PLANEANGLEUNIT.,$,.RADIAN.);
-#17=IFCMEASUREWITHUNIT(IFCPLANEANGLEMEASURE(0.017453292519943295),#16);
-#18=IFCCONVERSIONBASEDUNIT(#12,.PLANEANGLEUNIT.,'DEGREE',#17);
-#19=IFCUNITASSIGNMENT((#13,#14,#15,#18));
-#20=IFCPROJECT('%(project_globalid)s',#5,'%(project_name)s',$,$,$,$,(#11),#19);
-ENDSEC;
-END-ISO-10303-21;
-""" % locals()
 
 
-def excute(creator,organization,objectType,newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName):
-    filename=newIFCFile
-    creator=creator
-    organization=organization
-    objectTpye=objectType
-    ifcfile=getTempIfcfile()
-    resultIFC=addObjecttoIfcFile(ifcfile, newIFCFile, infoDic, vertexList, faceList, MaterialList, groupName)
+def excute(creator,organization,objectType,newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList):
+    global newFile
+    newFile=newIFCFile
+
+
+    resultIFC=addObjecttoIfcFile(newIFCFile, infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList)
     resultIFC.write(newIFCFile)
 
 

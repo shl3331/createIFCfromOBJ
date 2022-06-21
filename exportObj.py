@@ -1,7 +1,16 @@
 
 import bpy
+import math
 import os
 
+
+def degreeToEuler(degree):
+    '''
+    object에 image texture 입히는 함수
+    :param ob: object
+    :param imagePath:texture image
+    '''
+    return (degree * 2 * math.pi) / 360
 
 def convertToObj(file, saveFile):
     '''
@@ -19,10 +28,11 @@ def convertToObj(file, saveFile):
         object =bpy.ops.import_scene.gltf(filepath=file_loc)
     elif type == 'dae':
         object =bpy.ops.wm.collada_import(filepath=file_loc)
+    obj_object = bpy.context.selected_objects[0]
+    obj_object.rotation_euler[0] = degreeToEuler(-90)
+    obj_object.rotation_euler[1] = degreeToEuler(0)
+    obj_object.rotation_euler[2] = degreeToEuler(0)
     bpy.ops.export_scene.obj(filepath=saveFile)
-    obj=bpy.ops.import_scene.obj(filepath=saveFile)
-    bpyObj = bpy.context.selected_objects[0]
-    bpyObjName = bpy.data.objects[1].name
 
 def getVertex(readFile):
     '''
