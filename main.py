@@ -20,17 +20,17 @@ if __name__ == '__main__':
     print_hi('PyCharm')
     exportObj.convertToObj(fbx,saveFile)
     vertexList=exportObj.getVertex(saveFile)
-    vtList=exportObj.getVertexTexture(saveFile)
-    faceList,vtMapList=exportObj.getFace(saveFile)
+    vtList,vnList=exportObj.getVertexTexture(saveFile)
+    faceList,vtMapList,vnMapList=exportObj.getFace(saveFile)
     groupName=exportObj.getGroupName(saveFile)
     MaterialList=exportObj.getMtlList(saveFile)
     print("vertex :",vertexList)
     print("Face :",faceList)
     print("groupName :", groupName)
     print("MaterialList :", MaterialList)
-    newIFCFile=".\model\joint.ifc"
+    newIFCFile=".\model\joint_0630.ifc"
     infoDic={"fid":1,"lat":283718.4593,"lon":373939.1107,"alt":-1.28,"geo":-1.28,"distance":1.85,"line_num":3000,"type":0,"pipe_type":2,"depth":2.54,"instrument_height":180,"diameter":600,"create_date":"2020-02-20 16:35","img":"gnseA/200220-01-1.JPG,gnseA/200220-01-2.jpg,gnseA/200220-01-3.jpg","azimuth":354.0624431,"heading":-0.99,"pitch":-2.17,"roll":0,"curve_deg":"","curve_lat":"","curve_lon":"","curve_pitch":"","curve_depth":"","company_name":"chmetal","model_name":"ks_d_3590","material":"PE","qid":""}
-    createIFC.excute("Movements","Movements","Curve",newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList)
+    createIFC.excute("Movements","Movements","Curve",newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList,vnList,vnMapList)
     print(MaterialList)
 
 # https://www.jetbrains.com/help/pycharm/에서 PyCharm 도움말 참조

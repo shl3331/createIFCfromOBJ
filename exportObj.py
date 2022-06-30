@@ -62,6 +62,7 @@ def getVertexTexture(readFile):
     '''
     rf = open(readFile, "r")
     vertexLstVT=[]
+    vertexnorLstVN=[]
     while True:
         line = rf.readline()
         split = line.split()
@@ -69,10 +70,13 @@ def getVertexTexture(readFile):
             if split[0] == 'vt':
                 vtLst = (float(split[1]), float(split[2]))
                 vertexLstVT.append(vtLst)
+            elif split[0] == 'vn':
+                vnLst = (float(split[1]), float(split[2]))
+                vertexnorLstVN.append(vnLst)
         if not line:
             break
     rf.close()
-    return vertexLstVT
+    return vertexLstVT,vertexnorLstVN
 
 #get face vertext from objfile
 def getFace(readFile):
@@ -84,6 +88,7 @@ def getFace(readFile):
     rf = open(readFile, "r")
     faceLst=[]
     vtFaceLst=[]
+    vnFaceLst=[]
     while True:
         line = rf.readline()
         split = line.split()
@@ -91,15 +96,18 @@ def getFace(readFile):
             if split[0] == 'f':
                 lst=[]
                 vtlst=[]
+                vnlst=[]
                 for f in range(1,len(split)):
                     lst.append(split[f].split('/')[0])
                     vtlst.append(split[f].split('/')[1])
+                    vnlst.append(split[f].split('/')[2])
                 faceLst.append(lst)
                 vtFaceLst.append(vtlst)
+                vnFaceLst.append(vnlst)
         if not line:
             break
     rf.close()
-    return faceLst,vtFaceLst
+    return faceLst,vtFaceLst,vnFaceLst
 def getGroupName(objfileName):
     '''
     Get Group name in obj file for create header

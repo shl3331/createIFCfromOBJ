@@ -87,7 +87,7 @@ def create_ifcextrudedareasolid(ifcfile, point_list, ifcaxis2placement, extrude_
     ifcextrudedareasolid = ifcfile.createIfcExtrudedAreaSolid(ifcclosedprofile, ifcaxis2placement, ifcdir, extrusion)
     return ifcextrudedareasolid
 
-def create_ifcFacetedBrep(ifcfile, point_list,face_list,vtList,vtMapList):
+def create_ifcFacetedBrep(ifcfile, point_list,face_list,vtList,vtMapList,vnList,vnMapList):
     '''
     create ifcfile face from objfile object vertex list
     :param ifcfile: ifcfile
@@ -106,6 +106,8 @@ def create_ifcFacetedBrep(ifcfile, point_list,face_list,vtList,vtMapList):
         ifctexturevertexlst.append(ifcfile.createIfcTextureVertex(vt))
     for vtMap in vtMapList:
         ifcfile.createIfctexturemap([ifctexturevertexlst[int(vtMap[0])-1],ifctexturevertexlst[int(vtMap[1])-1],ifctexturevertexlst[int(vtMap[2])-1]])
+    for vn in vnMapList:
+        ifcfile.createIfcTrianglulatedFaceSet(vnList[vn[0]-1],vnList[vn[1]-1],vnList[vn[2]-1])
     for facelst in face_list:
         ifcpts = []
         for face in facelst:
@@ -183,14 +185,14 @@ with open(temp_filename, "wb") as f:
 # Obtain references to instances defined in template
 ifcfile = ifcopenshell.open(temp_filename)
 
-def addObjecttoIfcFile(newFile,infoDic,vertextlst,face_list,mtlList,groupName,vtList,vtMapList):
+def addObjecttoIfcFile(newFile,infoDic,vertextlst,face_list,mtlList,groupName,vtList,vtMapList,vnList,vnMapList):
     owner_history = ifcfile.by_type("IfcOwnerHistory")[0]
     project = ifcfile.by_type("IfcProject")[0]
     context = ifcfile.by_type("IfcGeometricRepresentationContext")[0]
     subcontext = ifcfile.by_type("IfcGeometricRepresentationSubContext")[0]
     axis2placement = ifcfile.by_type("IfcAxis2Placement3D")[0]
     representationMap = ifcfile.by_type("IfcRepresentationMap")[0]
-    shape = create_ifcFacetedBrep(ifcfile, vertextlst, face_list,vtList,vtMapList)
+    shape = create_ifcFacetedBrep(ifcfile, vertextlst, face_list,vtList,vtMapList,vnList,vnMapList)
     shapeRepresentation = ifcfile.createIfcShapeRepresentation(context, "Body", "Brep", [shape])
     createdMap = ifcfile.createIfcRepresentationMap(axis2placement, shapeRepresentation)
     materialLst = []
@@ -266,12 +268,12 @@ def addObjecttoIfcFile(newFile,infoDic,vertextlst,face_list,mtlList,groupName,vt
 
 
 
-def excute(creator,organization,objectType,newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList):
+def excute(creator,organization,objectType,newIFCFile,infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList,vnList,vnMapList):
     global newFile
     newFile=newIFCFile
 
 
-    resultIFC=addObjecttoIfcFile(newIFCFile, infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList)
+    resultIFC=addObjecttoIfcFile(newIFCFile, infoDic, vertexList, faceList, MaterialList, groupName,vtList,vtMapList,vnList,vnMapList)
     resultIFC.write(newIFCFile)
 
 
