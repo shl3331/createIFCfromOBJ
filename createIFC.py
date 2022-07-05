@@ -106,8 +106,8 @@ def create_ifcFacetedBrep(ifcfile, point_list,face_list,vtList,vtMapList,vnList,
         ifctexturevertexlst.append(ifcfile.createIfcTextureVertex(vt))
     for vtMap in vtMapList:
         ifcfile.createIfctexturemap([ifctexturevertexlst[int(vtMap[0])-1],ifctexturevertexlst[int(vtMap[1])-1],ifctexturevertexlst[int(vtMap[2])-1]])
-    for vn in vnMapList:
-        ifcfile.createIfcTrianglulatedFaceSet(vnList[vn[0]-1],vnList[vn[1]-1],vnList[vn[2]-1])
+    # for vn in vnMapList:
+    #     ifcfile.createIfcTriangulatedFaceSet(False,[vn[0],vn[1],vn[2]])
     for facelst in face_list:
         ifcpts = []
         for face in facelst:
